@@ -40,8 +40,9 @@ export interface SimulationResponse {
 }
 
 export interface GeminiResponse {
-  technical_summary: string;
-  patient_summary: string;
+  surgeon: { summary: string; points: string[] };
+  patient: { summary: string; points: string[]; questions: string[] };
+  source: 'gemini' | 'fallback';
   conversation_id: string;
 }
 

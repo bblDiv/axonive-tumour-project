@@ -37,10 +37,8 @@ const ScrollRow: React.FC<ScrollRowProps> = ({ children }) => {
   return (
     <div
       ref={rowRef}
-      className={`transition-all duration-1000 ease-out transform ${
-        isVisible
-          ? 'opacity-100 translate-y-0 scale-100'
-          : 'opacity-0 translate-y-12 scale-95'
+      className={`transition-[opacity,transform] duration-500 ease-out-quint ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
       }`}
     >
       {children}
@@ -76,13 +74,13 @@ const ScanSlicerSim: React.FC = () => {
 
   return (
     <div 
-      className="h-[400px] lg:h-[450px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative flex flex-col items-center justify-center p-6 group cursor-pointer"
+      className="h-[400px] lg:h-[450px] w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-slate-950 relative flex flex-col items-center justify-center p-6 group cursor-pointer"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Title */}
-      <div className="absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800">
-        <h4 className="text-xs font-semibold text-slate-200">Interactive 2D Scan Segmenter</h4>
+      <div className="absolute top-4 left-4 z-10 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/[0.08]">
+        <h4 className="text-xs font-medium text-slate-200">Scan segmenter</h4>
       </div>
 
       <div className="w-full max-w-[280px] h-[280px] relative">
@@ -122,7 +120,7 @@ const ScanSlicerSim: React.FC = () => {
             <path d="M115 85 C120 95, 120 105, 105 110 Z" fill="#38BDF8" opacity="0.8" />
 
             {/* Tumor Segmented (Bright Red with glow) */}
-            <circle cx="130" cy="80" r="16" fill="#EF4444" opacity="0.9" className="animate-pulse" />
+            <circle cx="130" cy="80" r="16" fill="#EF4444" opacity="0.9" />
             <circle cx="130" cy="80" r="12" fill="#FCA5A5" opacity="0.9" />
           </svg>
         </div>
@@ -141,20 +139,20 @@ const ScanSlicerSim: React.FC = () => {
 
       {/* Hover Instruction */}
       <div className="mt-4 text-center">
-        <p className="text-xs text-slate-500 group-hover:text-sky-400 transition-colors">
-          {isPaused ? "⏸️ Scan paused (hovering)" : "Hover scanning... Mouse over to pause"}
+        <p className="text-xs text-slate-500">
+          {isPaused ? "Scan paused" : "Scanning · hover to pause"}
         </p>
       </div>
 
       {/* Stats Overlay */}
-      <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-800 text-[10px] text-slate-400 space-y-1 select-none">
+      <div className="absolute bottom-4 right-4 bg-slate-900/90 px-3 py-2 rounded-lg border border-white/[0.08] text-[11px] text-slate-400 space-y-1 select-none">
         <div className="flex justify-between gap-4">
-          <span>Slice Z-Loc:</span>
-          <span className="font-semibold text-slate-200">{(scanY * 1.8).toFixed(1)} mm</span>
+          <span>Slice Z</span>
+          <span className="font-mono tabular-nums text-slate-200">{(scanY * 1.8).toFixed(1)} mm</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span>Target Tissue:</span>
-          <span className="font-semibold text-red-400">Tumor Locked</span>
+          <span>Target</span>
+          <span className="text-red-400">Tumor, 8.5 cm³</span>
         </div>
       </div>
     </div>
@@ -278,10 +276,10 @@ const FEAGridWarperSim: React.FC = () => {
   };
 
   return (
-    <div className="h-[400px] lg:h-[450px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative flex flex-col items-center justify-center p-6">
+    <div className="h-[400px] lg:h-[450px] w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-slate-950 relative flex flex-col items-center justify-center p-6">
       {/* Title */}
-      <div className="absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 flex items-center space-x-2">
-        <h4 className="text-xs font-semibold text-slate-200">Interactive 2D FEA Simulator</h4>
+      <div className="absolute top-4 left-4 z-10 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/[0.08]">
+        <h4 className="text-xs font-medium text-slate-200">Resection simulator</h4>
       </div>
 
       {/* Grid Canvas */}
@@ -338,9 +336,9 @@ const FEAGridWarperSim: React.FC = () => {
           <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-[1px]">
             <button 
               onClick={handleSimulate}
-              className="px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg hover:shadow-sky-500/20 active:scale-95 transition-all"
+              className="h-9 px-4 bg-[#eef0f5] hover:bg-white text-slate-950 font-medium text-xs rounded-lg active:scale-[0.98] transition-[background-color,transform]"
             >
-              Simulate Resection
+              Simulate resection
             </button>
           </div>
         )}
@@ -350,9 +348,9 @@ const FEAGridWarperSim: React.FC = () => {
           <div className="absolute bottom-2 left-0 right-0 flex justify-center">
             <button 
               onClick={handleReset}
-              className="px-3 py-1 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white font-medium text-[10px] rounded-lg transition-colors"
+              className="h-7 px-3 bg-slate-900 border border-white/[0.08] text-slate-300 hover:text-white font-medium text-[11px] rounded-md transition-colors"
             >
-              Reset Simulation
+              Reset
             </button>
           </div>
         )}
@@ -362,8 +360,8 @@ const FEAGridWarperSim: React.FC = () => {
       <div className="mt-4 text-center">
         {isSimulating ? (
           <div className="flex flex-col items-center space-y-1">
-            <span className="text-[10px] text-sky-400 uppercase tracking-wider font-semibold animate-pulse">
-              {progress < 1 ? "Solving Biomechanical Mesh..." : "FEA Calculation Solved"}
+            <span className="text-[11px] text-slate-400">
+              {progress < 1 ? "Solving mesh" : "Solved"}
             </span>
             <div className="w-40 h-1 bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-sky-400 transition-all duration-75" style={{ width: `${progress * 100}%` }}></div>
@@ -371,16 +369,16 @@ const FEAGridWarperSim: React.FC = () => {
           </div>
         ) : (
           <p className="text-xs text-slate-500">
-            Triggers inward elastic tissue deformation around target resection cavity
+            Tissue relaxes inward toward the resection cavity
           </p>
         )}
       </div>
 
       {/* Live Heatmap scale indicators */}
-      <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-slate-400 flex items-center space-x-2 select-none">
-        <span className="text-slate-500">FEA stress:</span>
+      <div className="absolute bottom-4 right-4 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-white/[0.08] text-[11px] text-slate-400 flex items-center space-x-2 select-none">
+        <span className="text-slate-500">Stress</span>
         <div className="w-12 h-2.5 bg-gradient-to-r from-blue-500 via-yellow-400 to-red-500 rounded-sm"></div>
-        <span className="text-slate-200 font-semibold">{isSimulating ? (1.35 * progress).toFixed(2) : "0.00"} kPa</span>
+        <span className="text-slate-200 font-mono tabular-nums">{isSimulating ? (1.35 * progress).toFixed(2) : "0.00"} kPa</span>
       </div>
     </div>
   );
@@ -392,23 +390,23 @@ const GeminiInsightsSim: React.FC = () => {
   const [typedText, setTypedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
-  const surgeonText = `>> AXONIVE RESECTION ASSESSMENT:
+  const surgeonText = `Resection assessment
 Target: Right Frontal Lobe (anterior)
-Maximum Tissue Displacement: 3.52 mm (SAFE LIMIT: <5.0mm)
-Average Localized Stress: 1.18 kPa
+Max tissue displacement: 3.52 mm (limit 5.0 mm)
+Average local stress: 1.18 kPa
 
-RECOMMENDED APPROACH:
+Recommended approach
 * Right frontal craniotomy suitable.
 * Rigid skull anchors avoid temporal lobe shearing.
 * Low risk of sensory/motor deficits.
 * Hemodynamic monitoring around frontal cortex advised.`;
 
-  const patientText = `>> PATIENT CARE SUMMARY:
-Summary: The surgical simulation has completed successfully.
-Expected Tissue Movement: Under 4 millimeters (Minimal shift).
-Risk Rating: Low Risk.
+  const patientText = `Patient summary
+The surgical simulation is complete.
+Expected tissue movement: under 4 mm, a small shift.
+Risk rating: low.
 
-WHAT TO EXPECT:
+What to expect
 * The brain tissue will shift slightly but safely to fill the gap left by the tumor.
 * Surrounding critical brain areas are unaffected.
 * Expected recovery in hospital is 3 to 5 days, followed by typical healing at home.`;
@@ -432,33 +430,33 @@ WHAT TO EXPECT:
   }, [activeTab]);
 
   return (
-    <div className="h-[400px] lg:h-[450px] w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative flex flex-col p-4">
+    <div className="h-[400px] lg:h-[450px] w-full rounded-2xl overflow-hidden border border-white/[0.08] bg-slate-950 relative flex flex-col p-4">
       {/* Title */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
         <div className="flex items-center space-x-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></div>
-          <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">Gemini Medical Console</span>
+          <div className="w-2 h-2 rounded-full bg-sky-400"></div>
+          <span className="text-xs font-medium text-slate-200">Pre-op report</span>
         </div>
         <div className="flex space-x-1.5">
           <button 
             onClick={() => setActiveTab('surgeon')}
-            className={`px-2.5 py-1 rounded text-[10px] font-medium transition-all ${
+            className={`h-7 px-2.5 rounded-md text-[11px] font-medium transition-colors ${
               activeTab === 'surgeon' 
-                ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/20' 
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-slate-800 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            For Surgeons
+            Surgeon
           </button>
           <button 
             onClick={() => setActiveTab('patient')}
-            className={`px-2.5 py-1 rounded text-[10px] font-medium transition-all ${
+            className={`h-7 px-2.5 rounded-md text-[11px] font-medium transition-colors ${
               activeTab === 'patient' 
-                ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/20' 
-                : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                ? 'bg-slate-800 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            For Patients
+            Patient
           </button>
         </div>
       </div>
@@ -467,7 +465,7 @@ WHAT TO EXPECT:
       <div className="flex-1 grid grid-cols-5 gap-3 min-h-0">
         
         {/* Left Side: 2D scan slice with callout markers */}
-        <div className="col-span-2 bg-slate-900/60 rounded-xl border border-slate-900/80 p-2 flex items-center justify-center relative overflow-hidden group">
+        <div className="col-span-2 bg-slate-900/60 rounded-xl border border-white/[0.06] p-2 flex items-center justify-center relative overflow-hidden group">
           <svg className="w-full max-w-[110px] h-auto" viewBox="0 0 200 200">
             {/* Radial Gradient for heatmap */}
             <radialGradient id="insightsHeatmap" cx="65%" cy="40%" r="40%">
@@ -496,24 +494,24 @@ WHAT TO EXPECT:
           </svg>
 
           {/* Dotted Line Indicators labels */}
-          <div className="absolute top-2 right-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded select-none">
-            Deformation cavity (3.52mm)
+          <div className="absolute top-2 right-2 text-[11px] font-mono text-amber-300 select-none">
+            3.52 mm
           </div>
-          <div className="absolute bottom-2 left-2 text-[8px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1 rounded select-none">
-            Unimpacted motor cortex
+          <div className="absolute bottom-2 left-2 text-[11px] text-sky-300 select-none">
+            Motor cortex clear
           </div>
         </div>
 
         {/* Right Side: Typewriter Console */}
-        <div className="col-span-3 bg-black/85 rounded-xl border border-slate-900 p-3 overflow-y-auto font-mono text-[9px] text-emerald-400 select-none leading-relaxed flex flex-col justify-between">
+        <div className="col-span-3 bg-black/60 rounded-xl border border-white/[0.06] p-3 overflow-y-auto font-mono text-[11px] text-slate-300 select-none leading-[18px] flex flex-col justify-between">
           <div className="whitespace-pre-wrap">
             {typedText}
-            {isTyping && <span className="w-1.5 h-3 bg-emerald-400 inline-block ml-0.5 animate-pulse"></span>}
+            {isTyping && <span className="w-1.5 h-3 bg-slate-300 inline-block ml-0.5 align-middle"></span>}
           </div>
           {!isTyping && (
-            <div className="text-slate-500 text-[8px] border-t border-slate-900 pt-2 mt-2 flex justify-between">
-              <span>REPORT_COMPLETE</span>
-              <span>TOKEN_SIZE: 128B</span>
+            <div className="text-slate-500 text-[11px] border-t border-white/[0.06] pt-2 mt-2 flex justify-between">
+              <span>Report complete</span>
+              <span>Gemini 2.5 Flash</span>
             </div>
           )}
         </div>
@@ -522,128 +520,68 @@ WHAT TO EXPECT:
   );
 };
 
+const STEPS: { title: string; body: string; bullets: string[]; Sim: React.FC }[] = [
+  {
+    title: 'Upload and segment in seconds',
+    body: 'Import MRI or CT scans in DICOM or NIfTI. Axonive labels the brain structures and outlines the tumor, so planning starts from a segmented scan.',
+    bullets: [
+      'Tissue classification: grey matter, white matter, skull',
+      'Tumor localization and volume estimate',
+      '62 labelled structures you can hide or isolate',
+    ],
+    Sim: ScanSlicerSim,
+  },
+  {
+    title: 'Simulate the resection',
+    body: 'Remove the tumor and see how surrounding tissue moves into the cavity, given its stiffness, the tumor size and the size of the skull opening.',
+    bullets: [
+      'Tissue displacement around the resection cavity',
+      'Adjustable tumor position, radius, stiffness and opening',
+      'Stress heatmap from low (blue) to high (red)',
+    ],
+    Sim: FEAGridWarperSim,
+  },
+  {
+    title: 'Read the pre-op report',
+    body: 'Gemini reads the simulation metrics and writes two summaries: a technical one for the surgical team and a plain-language one for the patient.',
+    bullets: [
+      'Regions under high stress, listed by name',
+      'Suggested approach for the surgical team',
+      'Patient summary for consent conversations',
+    ],
+    Sim: GeminiInsightsSim,
+  },
+];
+
 export const ScrollSimulations: React.FC = () => {
   return (
-    <div className="max-w-7xl mx-auto space-y-24 py-12">
-      {/* STEP 1 ROW */}
-      <ScrollRow>
-        <div className="grid lg:grid-cols-2 gap-12 items-center bg-gray-50/50 p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="space-y-6">
-            <div className="inline-block px-4 py-1 bg-medical-blue/10 text-medical-blue font-semibold rounded-full text-sm">
-              Step 1
+    <div className="max-w-7xl mx-auto space-y-8 pt-12">
+      {STEPS.map(({ title, body, bullets, Sim }, i) => (
+        <ScrollRow key={title}>
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center bg-paper p-6 lg:p-10 rounded-2xl border border-navy-deep/[0.08]">
+            <div>
+              <span className="inline-flex h-7 items-center px-3 rounded-md bg-scan-700/10 text-scan-700 text-sm font-medium">
+                Step {i + 1}
+              </span>
+              <h3 className="mt-6 font-serif text-4xl lg:text-[44px] leading-[1.1] tracking-[-0.02em] text-navy-deep">
+                {title}
+              </h3>
+              <p className="mt-6 text-lg leading-[30px] text-fg-2">{body}</p>
+              <ul className="mt-8 space-y-4">
+                {bullets.map((b) => (
+                  <li key={b} className="flex items-start gap-3">
+                    <svg className="w-5 h-5 mt-0.5 shrink-0 text-scan-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-base leading-6 text-fg">{b}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <h3 className="text-5xl font-serif font-bold text-navy-deep tracking-[-0.02em]">
-              Upload and segment in seconds
-            </h3>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              Import MRI or CT scans in DICOM format. Our AI instantly segments brain structures with clinical-grade accuracy, identifying critical regions for surgical planning.
-            </p>
-            <ul className="space-y-4">
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Automatic tissue classification (Grey, White Matter, Skull)</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Automatic tumor localization & volume estimation</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Processing complete in under 30 seconds</span>
-              </li>
-            </ul>
+            <Sim />
           </div>
-          
-          {/* 2D SCANNER SIMULATION */}
-          <ScanSlicerSim />
-        </div>
-      </ScrollRow>
-
-      {/* STEP 2 ROW */}
-      <ScrollRow>
-        <div className="grid lg:grid-cols-2 gap-12 items-center bg-gray-50/50 p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="space-y-6">
-            <div className="inline-block px-4 py-1 bg-mint-accent/10 text-mint-accent font-semibold rounded-full text-sm">
-              Step 2
-            </div>
-            <h3 className="text-5xl font-serif font-bold text-navy-deep tracking-[-0.02em]">
-              Run <i>biomechanical simulations</i>
-            </h3>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              Physics-based finite element analysis predicts exactly how brain tissue will deform during resection, accounting for elasticity, pressure changes, and anatomical constraints.
-            </p>
-            <ul className="space-y-4">
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Real-time deformation modeling and collapse analysis</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Patient-specific mechanical stress calculation</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Visual strain and stress heatmaps (Blue to Red)</span>
-              </li>
-            </ul>
-          </div>
-          
-          {/* 2D FEA GRID WARP SIMULATION */}
-          <FEAGridWarperSim />
-        </div>
-      </ScrollRow>
-
-      {/* STEP 3 ROW */}
-      <ScrollRow>
-        <div className="grid lg:grid-cols-2 gap-12 items-center bg-gray-50/50 p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="space-y-6">
-            <div className="inline-block px-4 py-1 bg-purple-100 text-purple-600 font-semibold rounded-full text-sm">
-              Step 3
-            </div>
-            <h3 className="text-5xl font-serif font-bold text-navy-deep tracking-[-0.02em]">
-              Get <i>AI-powered</i> insights
-            </h3>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              Gemini AI analyzes simulation results to identify risk areas, suggest optimal surgical approaches, and generate comprehensive reports for your team.
-            </p>
-            <ul className="space-y-4">
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Automated risk assessment across critical anatomical zones</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Natural language surgical recommendations for clinical review</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-700 text-base">Exportable patient-friendly reports for consent and review</span>
-              </li>
-            </ul>
-          </div>
-          
-          {/* 2D GEMINI INSIGHTS CONSOLE */}
-          <GeminiInsightsSim />
-        </div>
-      </ScrollRow>
+        </ScrollRow>
+      ))}
     </div>
   );
 };

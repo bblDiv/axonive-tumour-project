@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import meshData from '@/lib/cached_mesh.json';
-import { STRUCTURE_NAMES } from '../segment/route';
+import { STRUCTURE_NAMES } from '@/lib/structureNames';
 
 export async function POST(req: NextRequest) {
   try {

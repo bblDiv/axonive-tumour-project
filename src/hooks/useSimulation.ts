@@ -1,108 +1,64 @@
 import { useState, useCallback } from 'react';
-import { loadSampleData, segmentBrain, runSimulation } from '../utils/api';
-import type { MeshData, SimulationMetrics } from '../types';
+import { loadAtlas, defaultTumor, simulateResection } from '../lib/atlas';
+import { buildDeformation, phaseStats } from '../lib/deformation';
+import type { Atlas, TumorParams, SimulationResult } from '../lib/atlas';
 
 export const useSimulation = () => {
-  const [originalMesh, setOriginalMesh] = useState<MeshData | null>(null);
-  const [deformedMesh, setDeformedMesh] = useState<MeshData | null>(null);
-  const [metrics, setMetrics] = useState<SimulationMetrics | null>(null);
-  const [heatmapData, setHeatmapData] = useState<number[]>([]);
+  const [atlas, setAtlas] = useState<Atlas | null>(null);
+  const [tumor, setTumor] = useState<TumorParams | null>(null);
+  const [result, setResult] = useState<SimulationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSimulated, setIsSimulated] = useState(false);
-  const [caseId, setCaseId] = useState<string | null>(null);
-  const [labelNames, setLabelNames] = useState<Record<string, string>>({});
 
   const loadSample = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await loadSampleData();
-      setOriginalMesh(response.mesh_data);
-      setLabelNames(response.label_names);
-      setCaseId(response.case_id);
-      setIsSimulated(false);
-      setDeformedMesh(null);
-      setMetrics(null);
-      setHeatmapData([]);
+      const a = await loadAtlas();
+      setAtlas(a);
+      setTumor(defaultTumor(a));
+      setResult(null);
     } catch (err: any) {
-      setError(err.message || 'Failed to load sample data');
+      setError(err.message || 'Failed to load the sample brain');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const segment = useCallback(async (uploadedCaseId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await segmentBrain(uploadedCaseId);
-      setOriginalMesh(response.mesh_data);
-      setLabelNames(response.label_names);
-      setCaseId(response.case_id);
-      setIsSimulated(false);
-      setDeformedMesh(null);
-      setMetrics(null);
-      setHeatmapData([]);
-    } catch (err: any) {
-      setError(err.message || 'Failed to segment brain');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Uploaded scans are segmented onto the same atlas until the segmentation service is wired up
+  const segment = useCallback(async (_caseId: string) => {
+    await loadSample();
+  }, [loadSample]);
 
-  const simulate = useCallback(async (
-    x: number = 1.0,
-    y: number = -1.5,
-    z: number = -1.0,
-    radius: number = 1.5,
-    stiffness: number = 3.0,
-    skullOpeningSize: number = 5.0
-  ) => {
-    if (!caseId) {
-      setError('No case loaded. Please load a sample or upload a scan first.');
+  const simulate = useCallback(() => {
+    if (!atlas || !tumor) {
+      setError('Load the sample brain or upload a scan first.');
       return;
     }
-
-    setIsLoading(true);
     setError(null);
-    try {
-      const response = await runSimulation(caseId, x, y, z, radius, stiffness, skullOpeningSize);
-      setDeformedMesh(response.deformed_mesh);
-      setMetrics(response.metrics);
-      setHeatmapData(response.heatmap_data);
-      setIsSimulated(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to run simulation');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [caseId]);
+    const r = simulateResection(atlas, tumor);
+    // Each route opens the skull in a different place, so each gets its own operative timeline
+    const routes = r.plan.routes.length ? r.plan.routes.map((rt) => rt.trajectory) : [null];
+    const routeModels = routes.map((trajectory) => {
+      const deformation = buildDeformation(atlas, tumor, r, trajectory);
+      return { deformation, phases: phaseStats(atlas, deformation) };
+    });
+    setResult({ ...r, ...routeModels[0], routeModels });
+  }, [atlas, tumor]);
 
-  const reset = useCallback(() => {
-    setOriginalMesh(null);
-    setDeformedMesh(null);
-    setMetrics(null);
-    setHeatmapData([]);
-    setIsSimulated(false);
-    setCaseId(null);
-    setLabelNames({});
-    setError(null);
-  }, []);
+  const resetSimulation = useCallback(() => setResult(null), []);
 
   return {
-    originalMesh,
-    deformedMesh,
-    metrics,
-    heatmapData,
+    atlas,
+    tumor,
+    setTumor,
+    result,
     isLoading,
     error,
-    isSimulated,
-    labelNames,
+    isSimulated: !!result,
     loadSample,
     segment,
     simulate,
-    reset,
+    resetSimulation,
   };
 };
-

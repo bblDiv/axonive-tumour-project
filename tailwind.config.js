@@ -8,28 +8,46 @@ export default {
     extend: {
       colors: {
         'navy-deep': '#0A2540',
-        'medical-blue': '#0066CC',
-        'mint-accent': '#00D9C0',
-        'dark-bg': '#0F172A',
-        'glass-bg': 'rgba(255, 255, 255, 0.05)',
-        'glass-border': 'rgba(255, 255, 255, 0.1)',
+        // Reading-room ink ramp: light page surfaces and the dark viewer surfaces
+        paper: {
+          DEFAULT: '#f5f7fa',
+          card: '#ffffff',
+          raised: '#eceff4',
+        },
+        ink: {
+          950: '#07080d',
+          900: '#0b0d14',
+          850: '#11141c',
+          800: '#1a1e28',
+        },
+        fg: {
+          DEFAULT: '#0A2540',
+          2: '#4b5565',
+          3: '#6b7487',
+        },
+        // Scanner blue: the one accent. 700 for text and fills on light surfaces
+        scan: {
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          700: '#0369a1',
+        },
+        tumor: '#e5484d',
       },
       fontFamily: {
-        'sans': ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-        'serif': ['Lora', 'serif'],
-      },
-      backdropBlur: {
-        'glass': '12px',
+        'sans': ['var(--font-sans)', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        'serif': ['var(--font-serif)', 'serif'],
+        'mono': ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'float': '0 8px 24px rgba(10, 37, 64, 0.06)',
+        'window': '0 24px 48px -12px rgba(7, 8, 13, 0.25)',
+      },
+      transitionTimingFunction: {
+        'out-quint': 'cubic-bezier(0.22, 1, 0.36, 1)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.2s ease-in-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+        'slide-up': 'slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
       },
       keyframes: {
         fadeIn: {
@@ -37,12 +55,9 @@ export default {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
-      },
-      transitionDuration: {
-        '200': '200ms',
       },
     },
   },

@@ -1,309 +1,321 @@
 "use client";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSimulation } from '@/hooks/useSimulation';
 import { FileUpload } from '@/components/FileUpload';
 import { BrainViewer3D } from '@/components/BrainViewer3D';
+import type { ColorMode, FocusRequest, ViewerLayers } from '@/components/BrainViewer3D';
+import { LayersPanel, PhaseScrubber } from '@/components/ViewerControls';
+import { deformAt } from '@/lib/deformation';
+import { planForRoute } from '@/lib/planner';
 import { SimulationControls } from '@/components/SimulationControls';
-import { GeminiInsights } from '@/components/GeminiInsights';
 import { ComparisonView } from '@/components/ComparisonView';
-import { BackgroundPaths } from '@/components/ui/background-paths';
+import { ReportPopup } from '@/components/ReportPopup';
+import { Logo, LogoMark } from '@/components/Logo';
+import { LOBE_COLORS } from '@/lib/atlas';
+import type { Lobe, Structure } from '@/lib/atlas';
+import { getGeminiInsights } from '@/utils/api';
+import { buildReportFacts } from '@/lib/reportFacts';
+import type { GeminiResponse } from '@/types';
 
 export default function AxonivePage() {
   const {
-    originalMesh,
-    deformedMesh,
-    metrics,
-    heatmapData,
-    isLoading,
-    error,
-    isSimulated,
-    labelNames,
-    loadSample,
-    segment,
-    simulate,
+    atlas, tumor, setTumor, result, isLoading, error, isSimulated,
+    loadSample, segment, simulate, resetSimulation,
   } = useSimulation();
 
   const [showComparison, setShowComparison] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState<number | null>(null);
-  const [hiddenLabels, setHiddenLabels] = useState<number[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<number[]>([]);
+  const [colorMode, setColorMode] = useState<ColorMode>('anatomy');
+  const [layers, setLayers] = useState<ViewerLayers>({ dti: false, ct: false, approach: true, glass: false });
+  const [focus, setFocus] = useState<FocusRequest | null>(null);
+  const [phase, setPhase] = useState(0);
+  const [routeIndex, setRouteIndex] = useState(0);
 
-  const handleStructureClick = (id: number) => {
-    setSelectedLabel(prev => prev === id ? null : id);
-  };
+  const [report, setReport] = useState<GeminiResponse | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
-  const handleToggleStructure = (id: number) => {
-    setHiddenLabels(prev =>
-      prev.includes(id)
-        ? prev.filter(x => x !== id)
-        : [...prev, id]
-    );
-  };
+  const routeCount = result?.plan.routes.length ?? 0;
+  const activeRoute = routeIndex < routeCount ? routeIndex : 0;
+  const routeModel = result?.routeModels?.[activeRoute] ?? null;
+  const activePlan = useMemo(() => (result ? planForRoute(result.plan, activeRoute) : null), [result, activeRoute]);
 
-  const toggleAllStructures = () => {
-    if (hiddenLabels.length > 0) {
-      setHiddenLabels([]);
-    } else {
-      const allIds = Object.keys(labelNames).map(k => parseInt(k));
-      setHiddenLabels(allIds);
+  const facts = useMemo(
+    () => (atlas && tumor && result ? buildReportFacts(atlas, tumor, result, activeRoute) : null),
+    // The facts belong to the simulation that produced them, not to later slider moves
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [result, activeRoute],
+  );
+
+  // Only the latest request may update the report, so switching routes quickly never shows a stale one
+  const requestId = useRef(0);
+  const fetchReport = useCallback(async () => {
+    if (!facts) return;
+    const id = ++requestId.current;
+    setReportLoading(true);
+    setReportError(null);
+    try {
+      const r = await getGeminiInsights(facts);
+      if (id === requestId.current) setReport(r);
+    } catch (err: any) {
+      if (id === requestId.current) setReportError(err.message || 'Something went wrong');
+    } finally {
+      if (id === requestId.current) setReportLoading(false);
     }
-  };
+  }, [facts]);
 
-  const structureColors = useMemo(() => {
-    if (!originalMesh || !originalMesh.labels || !originalMesh.colors) return {};
-    const mapping: Record<number, string> = {};
-    const labels = originalMesh.labels;
-    const colors = originalMesh.colors;
-    for (let i = 0; i < labels.length; i++) {
-      const lbl = labels[i];
-      if (lbl !== undefined && colors[i]) {
-        if (!mapping[lbl]) {
-          const r = Math.round(colors[i][0] * 255);
-          const g = Math.round(colors[i][1] * 255);
-          const b = Math.round(colors[i][2] * 255);
-          mapping[lbl] = `rgb(${r}, ${g}, ${b})`;
-        }
-      }
+  // The tissue at the current point of the operative timeline, for the selected route
+  const frame = useMemo(
+    () => (atlas && routeModel ? deformAt(atlas, routeModel.deformation, phase) : null),
+    [atlas, routeModel, phase],
+  );
+  const shiftScaleMm = Math.max(4, Math.ceil(routeModel?.phases[2]?.maxShiftMm ?? 6));
+
+  // A new simulation starts on the recommended route at the end of the operation and opens the report
+  useEffect(() => {
+    if (!result) {
+      setReport(null);
+      setReportOpen(false);
+      setShowComparison(false);
+      setPhase(0);
+      setRouteIndex(0);
+      setColorMode((m) => (m === 'shift' ? 'anatomy' : m));
+      return;
     }
-    return mapping;
-  }, [originalMesh]);
+    setRouteIndex(0);
+    setPhase(3);
+    setColorMode('shift');
+    setReportOpen(true);
+  }, [result]);
 
-  const simulationData = isSimulated && deformedMesh && metrics
-    ? {
-        deformed_mesh: deformedMesh,
-        metrics: metrics,
-        heatmap_data: heatmapData,
-        case_id: 'current',
-      }
-    : null;
+  // Each route gets its own narrative
+  useEffect(() => {
+    if (facts) fetchReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facts]);
+
+  const groups = useMemo(() => {
+    if (!atlas) return [] as [Lobe, Structure[]][];
+    const byLobe = new Map<Lobe, Structure[]>();
+    for (const s of atlas.structures) {
+      if (!byLobe.has(s.lobe)) byLobe.set(s.lobe, []);
+      byLobe.get(s.lobe)!.push(s);
+    }
+    return [...byLobe.entries()];
+  }, [atlas]);
+
+  const toggleStructure = (id: number) =>
+    setHiddenIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const toggleAll = () =>
+    setHiddenIds((prev) => (prev.length > 0 || !atlas ? [] : atlas.structures.map((s) => s.id)));
 
   return (
-    <div className="h-screen flex flex-col bg-white relative overflow-hidden">
-      <BackgroundPaths showContent={false} className="opacity-70 pointer-events-none" />
-
-      {/* Top Navigation */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-pink-100/20 px-6 py-4 flex items-center justify-between z-20">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 256 256" fill="none">
-              <circle cx="128" cy="128" r="90" fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="16 16" opacity="0.4" />
-              <path d="M 128,128 L 128,38 M 128,128 L 213,90 M 128,128 L 180,210 M 128,128 L 76,210 M 128,128 L 43,90" stroke="currentColor" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
-              <path d="M 128,38 Q 170.5,64 213,90 M 213,90 Q 196.5,150 180,210 M 180,210 Q 128,210 76,210 M 76,210 Q 59.5,150 43,90 M 43,90 Q 85.5,64 128,38" fill="none" stroke="currentColor" strokeWidth="6" strokeDasharray="8,8" opacity="0.5" />
-              <circle cx="128" cy="128" r="32" fill="currentColor" />
-              <circle cx="128" cy="38" r="20" fill="currentColor" />
-              <circle cx="213" cy="90" r="20" fill="currentColor" />
-              <circle cx="180" cy="210" r="20" fill="currentColor" />
-              <circle cx="76" cy="210" r="20" fill="currentColor" />
-              <circle cx="43" cy="90" r="20" fill="currentColor" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-2xl font-serif font-semibold text-navy-deep tracking-[-0.02em]">Axonive</h1>
-            <p className="text-xs text-gray-500">AI-Powered Surgical Planning</p>
-          </div>
+    <div className="h-screen flex flex-col bg-paper overflow-hidden">
+      <nav className="h-14 shrink-0 bg-white border-b border-navy-deep/[0.08] px-6 flex items-center justify-between z-20">
+        <div className="flex items-center gap-3">
+          <Logo />
+          <span className="text-sm text-fg-3">Sandbox</span>
         </div>
-
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           {isLoading && (
-            <div className="flex items-center space-x-2 bg-pink-50 px-3 py-1.5 rounded-lg border border-pink-100/40">
-              <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-pink-700 font-medium">Processing...</span>
+            <div className="flex items-center gap-2 text-sm text-fg-2">
+              <div className="w-3.5 h-3.5 border-2 border-scan-700 border-t-transparent rounded-full animate-spin" />
+              <span>Loading atlas</span>
             </div>
           )}
           {isSimulated && (
-            <div className="flex items-center space-x-2 bg-pink-50 px-3 py-1.5 rounded-lg border border-pink-100/40">
-              <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
-              <span className="text-sm text-pink-700 font-medium">Simulation Complete</span>
-            </div>
+            <>
+              <button onClick={() => setShowComparison((v) => !v)} className="btn-secondary text-sm !py-1.5">
+                {showComparison ? 'Single view' : 'Before and after'}
+              </button>
+              <button onClick={() => setReportOpen(true)} className="btn-primary text-sm !py-1.5">
+                Pre-op report
+              </button>
+            </>
           )}
         </div>
       </nav>
 
-      {/* Error Toast */}
       {error && (
-        <div className="fixed top-20 right-6 z-50 animate-slide-up">
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 shadow-lg max-w-md">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
-              </div>
-            </div>
-          </div>
+        <div className="fixed top-20 right-6 z-40 animate-slide-up bg-white border border-tumor/30 rounded-lg px-4 py-3 shadow-float max-w-md">
+          <p className="text-sm text-fg">{error}</p>
         </div>
       )}
 
-      {/* Main Content - Three Column Layout */}
-      <div className="flex-1 flex overflow-hidden z-10">
-        {/* LEFT PANEL - Controls (320px) */}
-        <div className="w-[320px] bg-white/70 backdrop-blur-md border-r border-pink-100/20 flex flex-col h-full overflow-hidden">
-          <div className="p-4 flex-1 flex flex-col min-h-0 space-y-4">
-            <div className="overflow-y-auto pr-1 space-y-4 flex-shrink-0 max-h-[50%]">
-              <SimulationControls
-                onLoadSample={loadSample}
-                onSimulate={simulate}
-                isLoading={isLoading}
-                hasData={!!originalMesh}
-                isSimulated={isSimulated}
-                metrics={metrics}
-              />
-
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Upload Scan</h3>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Controls and structures */}
+        <aside className="w-[320px] shrink-0 bg-white border-r border-navy-deep/[0.08] flex flex-col overflow-hidden">
+          <div className="p-4 space-y-4 overflow-y-auto max-h-[60%] shrink-0">
+            <SimulationControls
+              mmPerUnit={atlas?.mmPerUnit ?? 1}
+              tumor={tumor}
+              onTumorChange={setTumor}
+              onLoadSample={loadSample}
+              onSimulate={simulate}
+              onReset={resetSimulation}
+              onOpenReport={() => setReportOpen(true)}
+              isLoading={isLoading}
+              hasData={!!atlas}
+              metrics={result?.metrics ?? null}
+              plan={activePlan}
+              routeIndex={activeRoute}
+              routeLabels={result?.plan.routes.map((r) => r.label) ?? []}
+              onSelectRoute={setRouteIndex}
+            />
+            {!atlas && (
+              <div className="border-t border-navy-deep/[0.08] pt-4">
+                <h3 className="text-sm font-medium text-fg mb-3">Upload scan</h3>
                 <FileUpload onUploadSuccess={segment} />
-              </div>
-
-              {isSimulated && metrics && (
-                <div className="border-t border-gray-200 pt-4 pb-2">
-                  <button
-                    onClick={() => setShowComparison(!showComparison)}
-                    className="w-full btn-secondary text-sm"
-                  >
-                    {showComparison ? 'Hide' : 'Show'} Comparison
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Brain Structures (61) List */}
-            {originalMesh && Object.keys(labelNames).length > 0 && (
-              <div className="border-t border-gray-200 pt-4 flex-1 flex flex-col min-h-0 text-left border-dashed">
-                <div className="flex justify-between items-center mb-2 flex-shrink-0">
-                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Brain Structures ({Object.keys(labelNames).length})</h3>
-                  <button 
-                    onClick={toggleAllStructures}
-                    className="text-[10px] text-pink-600 hover:text-pink-700 font-semibold focus:outline-none"
-                  >
-                    {hiddenLabels.length > 0 ? 'Show All' : 'Hide All'}
-                  </button>
-                </div>
-                
-                {/* Scrollable list */}
-                <div className="overflow-y-auto flex-1 pr-1 space-y-1 bg-slate-50/50 rounded-lg p-2 border border-gray-100">
-                  {Object.entries(labelNames).map(([idStr, name]) => {
-                    const id = parseInt(idStr);
-                    const color = structureColors[id] || '#cbd5e1';
-                    const isHidden = hiddenLabels.includes(id);
-                    const isSelected = selectedLabel === id;
-                    
-                    return (
-                      <div 
-                        key={id}
-                        onClick={() => handleStructureClick(id)}
-                        className={`flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer transition-all duration-150 group border ${
-                          isSelected 
-                            ? 'bg-orange-50 border-orange-200 shadow-sm' 
-                            : 'hover:bg-slate-100/80 border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2 min-w-0 flex-1">
-                          <input
-                            type="checkbox"
-                            checked={!isHidden}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleToggleStructure(id);
-                            }}
-                            className="accent-pink-500 w-3 h-3 rounded cursor-pointer flex-shrink-0"
-                          />
-                          <span 
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: color }}
-                          />
-                          <span className={`text-[11px] truncate select-none flex-1 ${
-                            isSelected 
-                              ? 'text-orange-950 font-semibold' 
-                              : 'text-gray-600 group-hover:text-gray-900'
-                          }`}>
-                            {name}
-                          </span>
-                        </div>
-                        {isSelected && (
-                          <span className="text-[9px] bg-orange-200 text-orange-850 px-1 py-0.5 rounded font-bold uppercase tracking-wider scale-90 ml-1 flex-shrink-0">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* CENTER PANEL - 3D Viewer (Flexible) */}
-        <div className="flex-1 bg-transparent relative">
-          {!originalMesh ? (
-            <div className="h-full flex items-center justify-center p-12 relative overflow-hidden">
-              <div className="text-center max-w-md animate-fade-in relative z-10 bg-white/75 backdrop-blur-md border border-pink-100/50 p-8 rounded-3xl shadow-xl shadow-pink-100/5">
-                <div className="w-20 h-20 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
-                  <svg className="w-10 h-10 text-pink-500" viewBox="0 0 256 256" fill="none">
-                    <circle cx="128" cy="128" r="90" fill="none" stroke="currentColor" strokeWidth="12" strokeDasharray="16 16" opacity="0.4" />
-                    <path d="M 128,128 L 128,38 M 128,128 L 213,90 M 128,128 L 180,210 M 128,128 L 76,210 M 128,128 L 43,90" stroke="currentColor" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
-                    <path d="M 128,38 Q 170.5,64 213,90 M 213,90 Q 196.5,150 180,210 M 180,210 Q 128,210 76,210 M 76,210 Q 59.5,150 43,90 M 43,90 Q 85.5,64 128,38" fill="none" stroke="currentColor" strokeWidth="6" strokeDasharray="8,8" opacity="0.5" />
-                    <circle cx="128" cy="128" r="32" fill="currentColor" />
-                    <circle cx="128" cy="38" r="20" fill="currentColor" />
-                    <circle cx="213" cy="90" r="20" fill="currentColor" />
-                    <circle cx="180" cy="210" r="20" fill="currentColor" />
-                    <circle cx="76" cy="210" r="20" fill="currentColor" />
-                    <circle cx="43" cy="90" r="20" fill="currentColor" />
-                  </svg>
-                </div>
-                <h2 className="text-3xl font-serif font-semibold text-navy-deep mb-3 tracking-[-0.02em]">Welcome to Axonive</h2>
-                <p className="text-slate-600 mb-8">
-                  Load a sample brain scan or upload your own medical imaging data to begin simulation
+          {atlas && (
+            <div className="border-t border-navy-deep/[0.08] flex-1 flex flex-col min-h-0">
+              <div className="h-11 px-4 flex justify-between items-center shrink-0">
+                <h3 className="text-sm font-medium text-fg">
+                  Structures <span className="font-mono text-xs text-fg-3 tabular-nums">{atlas.structures.length}</span>
+                </h3>
+                <button onClick={toggleAll} className="text-xs text-scan-700 hover:text-navy-deep font-medium">
+                  {hiddenIds.length > 0 ? 'Show all' : 'Hide all'}
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 px-2 pb-3">
+                {groups.map(([lobe, items]) => (
+                  <div key={lobe} className="mb-2">
+                    <div className="h-7 px-2 flex items-center gap-2 text-xs text-fg-3">
+                      <span className="w-2 h-2 rounded-full" style={{ background: LOBE_COLORS[lobe] }} />
+                      {lobe}
+                    </div>
+                    {items.map((s) => {
+                      const isHidden = hiddenIds.includes(s.id);
+                      const isSelected = selectedId === s.id;
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => setSelectedId(isSelected ? null : s.id)}
+                          className={`flex items-center h-8 px-2 gap-2 rounded-md cursor-pointer transition-colors group ${
+                            isSelected ? 'bg-paper-raised' : 'hover:bg-paper'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!isHidden}
+                            onChange={() => toggleStructure(s.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Show ${s.name}`}
+                            className="accent-[#0369a1] w-3.5 h-3.5 cursor-pointer shrink-0"
+                          />
+                          <span className={`text-xs truncate flex-1 ${isSelected ? 'text-fg font-medium' : 'text-fg-2 group-hover:text-fg'} ${isHidden ? 'opacity-50' : ''}`}>
+                            {s.name}
+                          </span>
+                          <span className="font-mono text-[11px] text-fg-3 tabular-nums">{s.volumeCm3.toFixed(1)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* Viewer */}
+        <main className="flex-1 relative min-w-0">
+          {!atlas ? (
+            <div className="h-full flex items-center justify-center p-12 bg-ink-950">
+              <div className="text-center max-w-sm animate-fade-in">
+                <LogoMark className="w-10 h-10 mx-auto mb-6 text-[#eef0f5]" />
+                <h2 className="text-3xl font-serif text-[#eef0f5] mb-3 tracking-[-0.02em]">No scan loaded</h2>
+                <p className="text-[#a3a9b8] mb-8">
+                  Load the sample brain to see 59 labelled structures in 3D, then place a tumor and simulate its removal.
                 </p>
                 <button
                   onClick={loadSample}
                   disabled={isLoading}
-                  className="btn-primary inline-flex items-center space-x-2"
+                  className="h-10 px-4 rounded-lg bg-[#eef0f5] text-ink-950 text-sm font-medium hover:bg-white transition-colors disabled:opacity-50"
                 >
-                  {isLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Loading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      <span>Load Sample Brain</span>
-                    </>
-                  )}
+                  {isLoading ? 'Loading' : 'Load sample brain'}
                 </button>
               </div>
             </div>
-          ) : showComparison && isSimulated && deformedMesh ? (
+          ) : showComparison && result && tumor ? (
             <ComparisonView
-              originalMesh={originalMesh}
-              deformedMesh={deformedMesh}
-              heatmapData={heatmapData}
-              selectedLabel={selectedLabel}
-              hiddenLabels={hiddenLabels}
+              routeIndex={activeRoute}
+              onSelectRoute={setRouteIndex}
+              atlas={atlas}
+              tumor={tumor}
+              result={result}
+              selectedId={selectedId}
+              hiddenIds={hiddenIds}
+              onSelect={setSelectedId}
+              frame={frame}
+              phase={phase}
+              shiftScaleMm={shiftScaleMm}
+              colorMode={colorMode}
+              layers={layers}
+              focus={focus}
             />
           ) : (
-            <div className="h-full">
-              <BrainViewer3D
-                meshData={isSimulated && deformedMesh ? deformedMesh : originalMesh}
-                title={isSimulated ? "Post-Resection Simulation" : "Brain Segmentation"}
-                showHeatmap={isSimulated}
-                heatmapData={heatmapData}
-                selectedLabel={selectedLabel}
-                hiddenLabels={hiddenLabels}
-              />
-            </div>
+            <BrainViewer3D
+              atlas={atlas}
+              tumor={tumor}
+              plan={result?.plan}
+              routeIndex={activeRoute}
+              onSelectRoute={setRouteIndex}
+              positions={frame?.positions}
+              shift={frame?.shift}
+              shiftScaleMm={shiftScaleMm}
+              tumorRemoved={isSimulated && phase >= 2.5}
+              toolTipMm={frame ? frame.toolTipMm : null}
+              colorMode={colorMode}
+              layers={layers}
+              focus={focus}
+              title={isSimulated ? 'Operative plan' : 'Segmented brain'}
+              selectedId={selectedId}
+              hiddenIds={hiddenIds}
+              onSelect={setSelectedId}
+            />
           )}
-        </div>
-
-        {/* RIGHT PANEL - Insights (320px) */}
-        <div className="w-[320px] bg-white/70 backdrop-blur-md border-l border-pink-100/20 overflow-y-auto">
-          <GeminiInsights simulationData={simulationData} />
-        </div>
+          {atlas && (
+            <LayersPanel
+              colorMode={colorMode}
+              onColorMode={setColorMode}
+              layers={layers}
+              onLayers={setLayers}
+              canShift={!!frame}
+              hasPlan={!!result?.plan.best}
+              routes={result?.plan.routes.map((r) => ({ label: r.label, depthMm: r.trajectory.depthMm })) ?? []}
+              routeIndex={activeRoute}
+              onSelectRoute={setRouteIndex}
+              onFocus={(mode) => setFocus((f) => ({ mode, key: (f?.key ?? 0) + 1 }))}
+            />
+          )}
+          {frame && result?.deformation && (
+            <PhaseScrubber
+              phase={phase}
+              onPhase={setPhase}
+              maxShiftMm={frame.maxShiftMm}
+              deepMarginShiftMm={frame.deepMarginShiftMm}
+              toolTipMm={frame.toolTipMm}
+              corridorDepthMm={routeModel?.deformation.corridorDepthMm ?? 0}
+            />
+          )}
+        </main>
       </div>
+
+      <ReportPopup
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        report={report}
+        facts={facts}
+        isLoading={reportLoading}
+        error={reportError}
+        onRegenerate={fetchReport}
+      />
     </div>
   );
 }

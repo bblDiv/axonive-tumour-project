@@ -70,15 +70,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={`
-          border-2 border-dashed rounded-lg p-6 text-center transition-colors
-          ${isDragging ? 'border-medical-blue bg-blue-50' : 'border-gray-300 bg-gray-50'}
-          ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-medical-blue'}
+          border border-dashed rounded-lg p-6 text-center transition-colors
+          ${isDragging ? 'border-scan-700 bg-scan-700/5' : 'border-navy-deep/[0.16] bg-paper'}
+          ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-scan-700'}
         `}
       >
         {isUploading ? (
           <div className="flex flex-col items-center space-y-2">
-            <div className="w-8 h-8 border-2 border-medical-blue border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm text-gray-600">Uploading...</p>
+            <div className="w-8 h-8 border-2 border-scan-700 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-gray-600">Uploading</p>
           </div>
         ) : (
           <>
@@ -98,7 +98,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
             <p className="text-sm text-gray-600 mb-2">
               Drag and drop DICOM files here, or
             </p>
-            <label className="text-sm text-medical-blue font-medium cursor-pointer hover:underline">
+            <label className="text-sm text-scan-700 font-medium cursor-pointer hover:underline">
               click to browse
               <input
                 type="file"

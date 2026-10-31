@@ -5,6 +5,7 @@ import type {
   SimulationResponse,
   GeminiResponse,
 } from '../types';
+import type { ReportFacts } from '../lib/reportFacts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
@@ -68,14 +69,14 @@ export const runSimulation = async (
   return response.data;
 };
 
-// Get Gemini insights
+// Get the narrative for a pre-op report; every number in it comes from the computed facts
 export const getGeminiInsights = async (
-  simulationResults: any,
+  facts: ReportFacts,
   query?: string,
   conversationId?: string
 ): Promise<GeminiResponse> => {
   const response = await api.post<GeminiResponse>('/gemini/analyze', {
-    simulation_results: simulationResults,
+    facts,
     query,
     conversation_id: conversationId,
   });
